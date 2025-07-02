@@ -3,11 +3,14 @@ from pathlib import Path
 from typing import AsyncIterator, Optional, Callable
 import tempfile
 import functools
+import os
 
 import numpy as np
 import soundfile as sf
 import whisper
 from whisper.utils import get_writer
+from pydub import AudioSegment
+import pydub.utils
 
 from ...core.logger import log
 from ...core.models import TranscriptionRequest
@@ -27,6 +30,10 @@ class WhisperService(BaseSpeechService):
         self.model: Optional[whisper.Whisper] = None
         self.model_name = model_name
         self.sample_rate = 16000  # Whisper expects 16kHz audio
+        
+        # Set ffmpeg path
+        ffmpeg_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Microsoft', 'WinGet', 'Packages', 'Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe', 'ffmpeg-7.1.1-full_build', 'bin', 'ffmpeg.exe')
+        pydub.AudioSegment.converter = ffmpeg_path
 
     async def initialize(self) -> None:
         """Initialize Whisper model"""
@@ -35,6 +42,60 @@ class WhisperService(BaseSpeechService):
         loop = asyncio.get_event_loop()
         self.model = await loop.run_in_executor(None, whisper.load_model, self.model_name)
         log.info("Whisper model initialized")
+
+    async def _load_audio(self, audio_path: Path, audio_format: str) -> np.ndarray:
+        """
+        Load audio file in any format and convert to the format Whisper expects
+        
+        Args:
+            audio_path: Path to the audio file
+            audio_format: Format of the audio file
+            
+        Returns:
+            Audio data as numpy array
+        """
+        loop = asyncio.get_event_loop()
+        
+        try:
+            if audio_format.lower() in ['wav']:
+                # Use soundfile for WAV files
+                audio_data, sample_rate = await loop.run_in_executor(None, sf.read, str(audio_path))
+            else:
+                # Use pydub for other formats
+                def load_with_pydub():
+                    audio = AudioSegment.from_file(str(audio_path), format=audio_format)
+                    # Convert to WAV in memory
+                    samples = np.array(audio.get_array_of_samples())
+                    # Convert to float32 and normalize
+                    samples = samples.astype(np.float32)
+                    samples = samples / np.abs(samples).max()
+                    return samples, audio.frame_rate
+                
+                audio_data, sample_rate = await loop.run_in_executor(None, load_with_pydub)
+            
+            # Convert to mono if stereo
+            if len(audio_data.shape) > 1:
+                audio_data = audio_data.mean(axis=1)
+            
+            # Convert to float32
+            audio_data = audio_data.astype(np.float32)
+            
+            # Normalize audio
+            audio_data = audio_data / np.abs(audio_data).max()
+            
+            # Resample to 16kHz if needed
+            if sample_rate != self.sample_rate:
+                # Simple resampling by linear interpolation
+                old_length = len(audio_data)
+                new_length = int(old_length * self.sample_rate / sample_rate)
+                indices = np.linspace(0, old_length - 1, new_length)
+                audio_data = np.interp(indices, np.arange(old_length), audio_data)
+            
+            return audio_data
+            
+        except Exception as e:
+            log.error(f"Error loading audio file: {e}")
+            raise
 
     async def transcribe_file(
         self, audio_path: Path, request: TranscriptionRequest
@@ -52,10 +113,13 @@ class WhisperService(BaseSpeechService):
         if not self.model:
             raise RuntimeError("Whisper model not initialized")
 
+        # Load and preprocess audio file
+        audio_data = await self._load_audio(audio_path, request.audio_format)
+
         # Create a partial function with the keyword arguments
         transcribe_func = functools.partial(
             self.model.transcribe,
-            str(audio_path),
+            audio_data,
             language=request.language if request.language != "auto" else None,
             fp16=False  # Use FP32 for better compatibility
         )
