@@ -1,20 +1,40 @@
-from pydantic_settings import BaseSettings
-from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
+from typing import Optional
+
 
 class Settings(BaseSettings):
-    # Project paths
-    BASE_DIR: Path = Path(__file__).parent.parent.parent
+    """Application settings using Pydantic BaseSettings for environment variable loading"""
     
-    # Ollama Configuration
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama2:13b-chat"
-    OLLAMA_TIMEOUT: float = 30.0
+    # App Config
+    APP_NAME: str = "Transcription Outpost"
+    API_V1_STR: str = "/api/v1"
+    DEBUG: bool = True
     
-    # Hardware Configuration
-    USE_GPU: bool = True
-    CUDA_DEVICE: str = "cuda:0"
+    # Model Paths
+    LLAMA_MODEL_PATH: str = "models/llama-2-13b-chat.gguf"
     
-    class Config:
-        env_file = ".env"
+    # Audio Config
+    MAX_AUDIO_SIZE_MB: int = 25
+    SUPPORTED_AUDIO_FORMATS: list[str] = ["wav", "mp3", "m4a", "ogg"]
+    SAMPLE_RATE: int = 16000
+    
+    # WebSocket Config
+    WS_PING_INTERVAL: int = 30  # seconds
+    
+    # CORS Configuration
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:80"]
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True
+    )
 
-settings = Settings() 
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Get cached settings instance"""
+    return Settings()
+
+# Global Settings Instance
+settings = get_settings() 
