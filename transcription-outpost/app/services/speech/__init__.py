@@ -1,10 +1,10 @@
 from .base import BaseSpeechService
 from .factory import SpeechServiceFactory, SpeechServiceType
-from .paddle import PaddleSpeechService
+from .whisper import WhisperService
 
 __all__ = [
     "BaseSpeechService",
     "SpeechServiceFactory",
     "SpeechServiceType",
-    "PaddleSpeechService",
+    "WhisperService",
 ] 

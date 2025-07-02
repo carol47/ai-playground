@@ -3,12 +3,12 @@ from typing import Optional
 
 from ...core.logger import log
 from .base import BaseSpeechService
-from .paddle import PaddleSpeechService
+from .whisper import WhisperService
 
 
 class SpeechServiceType(str, Enum):
     """Available speech service types"""
-    PADDLE = "paddle"
+    WHISPER = "whisper"
     # Add more service types here as we implement them
 
 
@@ -19,7 +19,7 @@ class SpeechServiceFactory:
     
     @classmethod
     async def get_service(
-        cls, service_type: SpeechServiceType = SpeechServiceType.PADDLE
+        cls, service_type: SpeechServiceType = SpeechServiceType.WHISPER
     ) -> BaseSpeechService:
         """
         Get or create a speech service instance
@@ -39,9 +39,9 @@ class SpeechServiceFactory:
     @classmethod
     def _create_service(cls, service_type: SpeechServiceType) -> BaseSpeechService:
         """Create a new speech service instance"""
-        if service_type == SpeechServiceType.PADDLE:
-            log.info("Creating PaddleSpeech service")
-            return PaddleSpeechService()
+        if service_type == SpeechServiceType.WHISPER:
+            log.info("Creating Whisper service")
+            return WhisperService(model_name="base")
         else:
             raise ValueError(f"Unknown speech service type: {service_type}")
     
