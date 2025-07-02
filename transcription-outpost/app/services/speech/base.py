@@ -1,8 +1,18 @@
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Optional
 from pathlib import Path
+from pydantic import BaseModel
 
 from ...core.models import TranscriptionRequest
+
+
+class AudioTranscriptionResult(BaseModel):
+    """Model for transcription results"""
+    text: str
+    confidence: float
+    duration: Optional[float] = None
+    language: Optional[str] = None
+    model: str
 
 
 class BaseSpeechService(ABC):
@@ -14,25 +24,23 @@ class BaseSpeechService(ABC):
         pass
 
     @abstractmethod
-    async def transcribe_file(
-        self, audio_path: Path, request: TranscriptionRequest
-    ) -> tuple[str, float]:
+    async def transcribe(self, content: bytes, file_ext: str) -> AudioTranscriptionResult:
         """
-        Transcribe an audio file
+        Transcribe audio content
         
         Args:
-            audio_path: Path to the audio file
-            request: Transcription request parameters
+            content: Raw audio bytes
+            file_ext: Audio file extension (e.g. 'wav', 'mp3')
             
         Returns:
-            Tuple of (transcribed_text, confidence_score)
+            AudioTranscriptionResult containing transcription and metadata
         """
         pass
 
     @abstractmethod
     async def transcribe_stream(
         self, audio_stream: AsyncIterator[bytes], request: TranscriptionRequest
-    ) -> AsyncIterator[tuple[str, float]]:
+    ) -> AsyncIterator[AudioTranscriptionResult]:
         """
         Transcribe an audio stream
         
@@ -41,7 +49,7 @@ class BaseSpeechService(ABC):
             request: Transcription request parameters
             
         Returns:
-            Async iterator of (transcribed_text, confidence_score) tuples
+            Async iterator of AudioTranscriptionResult
         """
         pass
 

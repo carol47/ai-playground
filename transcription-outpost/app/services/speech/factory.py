@@ -41,7 +41,7 @@ class SpeechServiceFactory:
         """Create a new speech service instance"""
         if service_type == SpeechServiceType.WHISPER:
             log.info("Creating Whisper service")
-            return WhisperService(model_name="base")
+            return WhisperService()
         else:
             raise ValueError(f"Unknown speech service type: {service_type}")
     
@@ -50,4 +50,12 @@ class SpeechServiceFactory:
         """Cleanup the current speech service instance"""
         if cls._instance:
             await cls._instance.cleanup()
-            cls._instance = None 
+            cls._instance = None
+
+
+# Expose factory method at module level
+async def get_transcription_service(
+    service_type: SpeechServiceType = SpeechServiceType.WHISPER
+) -> BaseSpeechService:
+    """Get a transcription service instance"""
+    return await SpeechServiceFactory.get_service(service_type) 
