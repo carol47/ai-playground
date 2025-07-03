@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
+    "dev:https": "set FASTAPI_URL=http://192.168.0.76:8000&& next dev --experimental-https --port 3001",
+    "dev:https:local": "set FASTAPI_URL=http://192.168.0.76:8000&& next dev --experimental-https --hostname 192.168.0.76 --port 3001",
+    "dev:http": "set FASTAPI_URL=http://192.168.0.76:8000&& next dev --port 3002",
+    "dev:simple": "set FASTAPI_URL=http://192.168.0.76:8000&& set NODE_ENV=development && node simple-server.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

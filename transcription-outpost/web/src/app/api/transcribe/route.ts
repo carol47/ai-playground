@@ -29,10 +29,16 @@ export async function POST(request: NextRequest) {
     console.log('📤 [API Route] Sending request to FastAPI backend...')
     
     // Make request to FastAPI backend
-    const fastApiUrl = 'http://localhost:8000/api/v1/transcription/'
+    const rawUrl = process.env.FASTAPI_URL || 'http://localhost:8000'
+    console.log('🔍 [API Route] Raw FASTAPI_URL:', JSON.stringify(rawUrl))
+    const fastApiUrl = rawUrl.trim()
+    console.log('🔍 [API Route] Trimmed FASTAPI_URL:', JSON.stringify(fastApiUrl))
+    const fullUrl = `${fastApiUrl}/api/v1/transcription/`
     const startTime = Date.now()
     
-    const response = await fetch(fastApiUrl, {
+    console.log('🔗 [API Route] Backend URL:', JSON.stringify(fullUrl))
+    
+    const response = await fetch(fullUrl, {
       method: 'POST',
       body: backendFormData,
     })

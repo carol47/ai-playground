@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Audio Config
     MAX_AUDIO_SIZE_MB: int = 25
-    SUPPORTED_AUDIO_FORMATS: list[str] = ["wav", "mp3", "m4a", "ogg"]
+    SUPPORTED_AUDIO_FORMATS: list[str] = ["wav", "mp3", "m4a", "ogg", "webm"]
     SAMPLE_RATE: int = 16000
     
     # WebSocket Config

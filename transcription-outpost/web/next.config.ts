@@ -1,7 +1,17 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Change build directory to avoid permission issues
+  distDir: '.next-build',
+  // Disable source maps in development to reduce file I/O
+  productionBrowserSourceMaps: false,
+  // Disable experimental optimizations
+  experimental: {
+    // @ts-ignore
+    disableOptimizedLoading: true,
+  },
+}
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+// Disable telemetry completely
+process.env.NEXT_TELEMETRY_DISABLED = '1'
 
-export default nextConfig;
+module.exports = nextConfig
