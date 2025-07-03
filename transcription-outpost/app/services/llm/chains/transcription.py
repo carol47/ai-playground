@@ -4,7 +4,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from loguru import logger
 
-from .llama import llama_service
+from ..providers.llama import llama_service
 
 class LlamaLLM(LLM):
     """Custom LangChain LLM class for our LlamaService"""

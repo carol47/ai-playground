@@ -8,9 +8,9 @@ import soundfile as sf
 from paddlespeech.cli.asr.infer import ASRExecutor
 from paddlespeech.server.engine.asr.online.asr_engine import PaddleASRConnectionHandler
 
-from ...core.logger import log
-from ...core.models import TranscriptionRequest
-from .base import BaseSpeechService
+from ....core.logger import log
+from ....core.models import TranscriptionRequest
+from ..base import BaseSpeechService
 
 
 class PaddleSpeechService(BaseSpeechService):

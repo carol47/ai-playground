@@ -8,10 +8,10 @@ from pydub import AudioSegment
 import pydub.utils
 import os
 
-from ...core.config import settings
-from ...core.logger import log
-from ...core.models import TranscriptionRequest
-from .base import BaseSpeechService, AudioTranscriptionResult
+from ....core.config import settings
+from ....core.logger import log
+from ....core.models import TranscriptionRequest
+from ..base import BaseSpeechService, AudioTranscriptionResult
 
 
 # Configure ffmpeg path for both pydub and whisper

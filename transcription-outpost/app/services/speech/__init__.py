@@ -1,6 +1,6 @@
 from .base import BaseSpeechService
 from .factory import SpeechServiceFactory, SpeechServiceType
-from .whisper import WhisperService
+from .providers import WhisperService
 
 __all__ = [
     "BaseSpeechService",

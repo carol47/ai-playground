@@ -1,5 +1,5 @@
 import asyncio
-from app.services.llm.llama import llama_service
+from app.services.llm.providers.llama import llama_service
 
 async def test_llama():
     prompts = [

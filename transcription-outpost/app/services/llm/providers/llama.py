@@ -2,11 +2,19 @@ from typing import Optional, Dict, Any
 import httpx
 from loguru import logger
 
-class LlamaService:
+from ..base import BaseLLMService
+
+class LlamaService(BaseLLMService):
     def __init__(self):
         self.base_url = "http://localhost:11434/api"
         self.model = "llama2:13b-chat"
-        self._check_model()
+        self._initialized = False
+    
+    async def initialize(self) -> None:
+        """Initialize the LLM service and load models"""
+        if not self._initialized:
+            self._check_model()
+            self._initialized = True
     
     def _check_model(self) -> None:
         """Verify that the model is available"""
@@ -57,18 +65,41 @@ class LlamaService:
             logger.error(f"Error generating response: {str(e)}")
             raise
 
-    async def process_transcription(
-        self,
-        transcription: str,
-        system_prompt: str = "You are a helpful assistant processing audio transcriptions.",
-    ) -> str:
-        """Process a transcription using the LLaMA model"""
-        prompt = f"""
-        System: {system_prompt}
-        User: Process this transcription: {transcription}
-        Assistant: """
-        
-        return await self.generate_response(prompt)
+    async def process_transcription(self, transcription: str) -> Dict[str, str]:
+        """Process a transcription through LLM chains"""
+        try:
+            # Process the transcription for better formatting
+            process_prompt = f"""
+            Process the following transcription, correcting any obvious errors,
+            and format it into clear, punctuated text:
+            
+            {transcription}
+            """
+            
+            processed_text = await self.generate_response(process_prompt)
+            
+            # Generate a summary
+            summary_prompt = f"""
+            Provide a concise summary of the following transcription:
+            
+            {transcription}
+            """
+            
+            summary = await self.generate_response(summary_prompt)
+            
+            return {
+                "processed_text": processed_text,
+                "summary": summary
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in transcription processing: {str(e)}")
+            raise
+    
+    async def cleanup(self) -> None:
+        """Cleanup resources"""
+        # No specific cleanup needed for HTTP client
+        self._initialized = False
 
 # Initialize the service
 llama_service = LlamaService() 

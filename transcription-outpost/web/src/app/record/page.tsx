@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { Mic, MicOff, Square, Play, Loader2, CheckCircle, AlertCircle, Volume2, Copy, Check } from 'lucide-react'
+import { Mic, MicOff, Square, Play, Loader2, CheckCircle, AlertCircle, Volume2 } from 'lucide-react'
 
 interface TranscriptionResult {
   text: string
@@ -21,7 +21,6 @@ export default function RecordPage() {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [isClient, setIsClient] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -146,100 +145,34 @@ export default function RecordPage() {
   }
 
   const startRecording = async () => {
-    // Prevent starting if already recording
-    if (isRecording) {
-      console.log('Recording already in progress')
-      return
+    if (!streamRef.current) {
+      await requestMicrophonePermission()
+      if (!streamRef.current) return
     }
 
-    // Clear any previous errors and results
-    setError(null)
-    setTranscriptionResult(null)
-    setRecordedBlob(null)
-    chunksRef.current = []
-
     try {
-      // Request microphone permission if not available
-      if (!streamRef.current) {
-        console.log('Requesting microphone permission...')
-        await requestMicrophonePermission()
-        
-        if (!streamRef.current) {
-          setError('Microphone access denied. Please allow microphone access and try again.')
-          return
-        }
-      }
+      setError(null)
+      setTranscriptionResult(null)
+      setRecordedBlob(null)
+      chunksRef.current = []
 
-      // Validate the stream is still active
-      if (!streamRef.current.active) {
-        console.log('Stream inactive, requesting new permission...')
-        await requestMicrophonePermission()
-        
-        if (!streamRef.current || !streamRef.current.active) {
-          setError('Microphone stream is not active. Please refresh and allow microphone access.')
-          return
-        }
-      }
-
-      // Try different mime types for better browser compatibility
-      const supportedMimeTypes = [
-        'audio/ogg;codecs=opus',
-        'audio/webm;codecs=opus', 
-        'audio/webm',
-        'audio/mp4',
-        'audio/wav'
-      ]
-
-      let selectedMimeType = ''
-      for (const mimeType of supportedMimeTypes) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType
-          console.log('Using mime type:', mimeType)
-          break
-        }
-      }
-
-      if (!selectedMimeType) {
-        setError('No supported audio format found on this browser.')
-        return
-      }
-
-      // Create MediaRecorder with supported mime type
       const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: selectedMimeType
+        mimeType: 'audio/ogg;codecs=opus'
       })
 
-      // Enhanced event handlers
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
+        if (event.data.size > 0) {
           chunksRef.current.push(event.data)
-          console.log(`Data chunk received: ${event.data.size} bytes`)
         }
       }
 
       mediaRecorder.onstop = () => {
-        if (chunksRef.current.length > 0) {
-          const blob = new Blob(chunksRef.current, { type: selectedMimeType })
-          setRecordedBlob(blob)
-          console.log('Recording stopped successfully, blob size:', blob.size, 'bytes')
-        } else {
-          console.warn('No audio data recorded')
-          setError('No audio data was recorded. Please try again.')
-        }
+        const blob = new Blob(chunksRef.current, { type: 'audio/ogg' })
+        setRecordedBlob(blob)
+        console.log('Recording stopped, blob size:', blob.size)
       }
 
-      mediaRecorder.onerror = (event) => {
-        console.error('MediaRecorder error:', event)
-        setError('Recording error occurred. Please try again.')
-        setIsRecording(false)
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current)
-          intervalRef.current = null
-        }
-      }
-
-      // Start recording with smaller chunks for better responsiveness
-      mediaRecorder.start(250) // Collect data every 250ms
+      mediaRecorder.start(1000) // Collect data every second
       mediaRecorderRef.current = mediaRecorder
       setIsRecording(true)
       setRecordingDuration(0)
@@ -249,19 +182,9 @@ export default function RecordPage() {
         setRecordingDuration(prev => prev + 1)
       }, 1000)
 
-      console.log('Recording started successfully with mime type:', selectedMimeType)
-
     } catch (error) {
       console.error('Error starting recording:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      setError(`Failed to start recording: ${errorMessage}`)
-      
-      // Clean up on error
-      setIsRecording(false)
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+      setError('Failed to start recording. Please try again.')
     }
   }
 
@@ -287,18 +210,8 @@ export default function RecordPage() {
     setError(null)
 
     try {
-          // Determine correct file extension based on MIME type
-    const getFileExtension = (mimeType: string): string => {
-      if (mimeType.includes('webm')) return 'webm'
-      if (mimeType.includes('ogg')) return 'ogg' 
-      if (mimeType.includes('mp4')) return 'mp4'
-      if (mimeType.includes('wav')) return 'wav'
-      return 'webm' // fallback
-    }
-    
-    const fileExtension = getFileExtension(recordedBlob.type)
-    const formData = new FormData()
-    formData.append('file', recordedBlob, `recording-${Date.now()}.${fileExtension}`)
+      const formData = new FormData()
+      formData.append('file', recordedBlob, `recording-${Date.now()}.webm`)
 
       console.log('🎙️ Sending recorded audio to transcription...')
       
@@ -339,19 +252,6 @@ export default function RecordPage() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const copyToClipboard = async () => {
-    if (!transcriptionResult?.text) return
-    
-    try {
-      await navigator.clipboard.writeText(transcriptionResult.text)
-      setIsCopied(true)
-      setTimeout(() => setIsCopied(false), 2000) // Reset after 2 seconds
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err)
-      setError('Failed to copy to clipboard. Please try selecting and copying the text manually.')
-    }
   }
 
   // Don't render anything until client-side hydration is complete
@@ -537,7 +437,7 @@ export default function RecordPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm text-white/70 mb-4">
+            <div className="grid grid-cols-2 gap-4 text-sm text-white/70">
               <div>
                 <span className="font-semibold">Confidence:</span>{' '}
                 <span className={`${transcriptionResult.confidence > 0.9 ? 'text-green-400' : transcriptionResult.confidence > 0.7 ? 'text-yellow-400' : 'text-red-400'}`}>
@@ -548,31 +448,6 @@ export default function RecordPage() {
                 <span className="font-semibold">Language:</span>{' '}
                 <span>{transcriptionResult.language || 'auto-detected'}</span>
               </div>
-            </div>
-
-            {/* Copy Button */}
-            <div className="flex justify-center">
-              <button
-                onClick={copyToClipboard}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                  isCopied 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105'
-                }`}
-                disabled={isCopied}
-              >
-                {isCopied ? (
-                  <>
-                    <Check className="w-5 h-5" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-5 h-5" />
-                    <span>Copy to Clipboard</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         )}

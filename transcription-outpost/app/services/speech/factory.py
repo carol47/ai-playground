@@ -3,7 +3,7 @@ from typing import Optional
 
 from ...core.logger import log
 from .base import BaseSpeechService
-from .whisper import WhisperService
+from .providers.whisper import WhisperService
 
 
 class SpeechServiceType(str, Enum):
