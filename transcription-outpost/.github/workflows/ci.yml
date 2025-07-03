@@ -1,0 +1,100 @@
+name: 🎖️ Transcription Outpost CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 🎖️ Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: 🎖️ Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: 🎖️ Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: 🎖️ Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+    
+    - name: 🎖️ Install project
+      run: poetry install --no-interaction
+    
+    - name: 🎖️ Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+    
+    - name: 🎖️ Run Test Battalion
+      run: |
+        cd transcription-outpost
+        poetry run python run_tests.py
+    
+    - name: 🎖️ Generate Coverage Report
+      run: |
+        cd transcription-outpost
+        poetry run pytest --cov=app --cov-report=xml tests/
+    
+    - name: 🎖️ Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./transcription-outpost/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 🎖️ Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    
+    - name: 🎖️ Install Poetry
+      uses: snok/install-poetry@v1
+    
+    - name: 🎖️ Install dependencies
+      run: |
+        cd transcription-outpost
+        poetry install
+    
+    - name: 🎖️ Run Linting
+      run: |
+        cd transcription-outpost
+        poetry run black --check .
+        poetry run isort --check-only .
+        poetry run flake8 .
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 🎖️ Run Security Scan
+      uses: pypa/gh-action-pip-audit@v1.0.8
+      with:
+        inputs: transcription-outpost/requirements.txt 
