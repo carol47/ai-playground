@@ -1,0 +1,76 @@
+stages:
+  - test
+  - lint
+  - security
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/poetry"
+
+cache:
+  paths:
+    - .cache/pip
+    - .cache/poetry
+    - .venv/
+
+before_script:
+  - apt-get update -qq && apt-get install -y -qq ffmpeg
+  - pip install poetry
+  - poetry config virtualenvs.in-project true
+  - poetry install
+
+🎖️ Unit Tests:
+  stage: test
+  image: python:3.11
+  script:
+    - cd transcription-outpost
+    - poetry run python run_tests.py
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.xml
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
+
+🎖️ Linting:
+  stage: lint
+  image: python:3.11
+  script:
+    - cd transcription-outpost
+    - poetry run black --check .
+    - poetry run isort --check-only .
+    - poetry run flake8 .
+
+🎖️ Security Scan:
+  stage: security
+  image: python:3.11
+  script:
+    - cd transcription-outpost
+    - poetry run safety check
+    - poetry run bandit -r app/
+
+🎖️ Performance Tests:
+  stage: test
+  image: python:3.11
+  script:
+    - cd transcription-outpost
+    - poetry run python temp_performance.py
+  allow_failure: true
+
+🎖️ API Documentation:
+  stage: deploy
+  image: python:3.11
+  script:
+    - cd transcription-outpost
+    - poetry run python -c "from app.main import app; import json; print(json.dumps(app.openapi(), indent=2))" > api-docs.json
+  artifacts:
+    paths:
+      - api-docs.json
+  only:
+    - main 

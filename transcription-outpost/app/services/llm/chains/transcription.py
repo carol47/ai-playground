@@ -1,6 +1,5 @@
 from typing import Any, Dict
 from langchain.llms.base import LLM
-from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from loguru import logger
 
@@ -41,11 +40,8 @@ class TranscriptionChain:
             """
         )
         
-        self.process_chain = LLMChain(
-            llm=self.llm,
-            prompt=self.process_prompt,
-            verbose=True
-        )
+        # Modern LangChain pattern: prompt | llm
+        self.process_chain = self.process_prompt | self.llm
         
         # Summary chain
         self.summary_prompt = PromptTemplate(
@@ -57,18 +53,15 @@ class TranscriptionChain:
             """
         )
         
-        self.summary_chain = LLMChain(
-            llm=self.llm,
-            prompt=self.summary_prompt,
-            verbose=True
-        )
+        # Modern LangChain pattern: prompt | llm
+        self.summary_chain = self.summary_prompt | self.llm
     
     async def process_transcription(self, transcription: str) -> Dict[str, str]:
         """Process a transcription through multiple chains"""
         try:
-            # Run chains in parallel
-            processed = await self.process_chain.arun(transcription=transcription)
-            summary = await self.summary_chain.arun(transcription=transcription)
+            # Run chains using modern LangChain invoke API
+            processed = await self.process_chain.ainvoke({"transcription": transcription})
+            summary = await self.summary_chain.ainvoke({"transcription": transcription})
             
             return {
                 "processed_text": processed,

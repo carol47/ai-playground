@@ -8,6 +8,7 @@ class LlamaService(BaseLLMService):
     def __init__(self):
         self.base_url = "http://localhost:11434/api"
         self.model = "llama2:13b-chat"
+        self.model_name = "llama2:13b-chat"  # For compatibility with tests
         self._initialized = False
     
     async def initialize(self) -> None:
